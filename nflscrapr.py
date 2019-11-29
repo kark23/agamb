@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import datetime
+import time
 
 def gamelag(gm):
     yr,wk=(gm[:4],gm[4:])
@@ -8,23 +9,6 @@ def gamelag(gm):
         return str(int(yr)-1)+'17'
     else:
         return yr+str(int(wk)-1)
-
-def ts_agg(datmain,his,typid,keys,incols,aggcols):
-    dat=datmain[datmain[typid]==1][incols]
-    dat=dat[keys+['week','year']+aggcols].groupby(keys+['week','year']).sum().reset_index()
-    dat['Game0']=dat['year'].astype(str)+dat['week'].astype(str)
-    rnm={}
-    for i in range(1,his+1):
-        dat=dat.drop_duplicates()
-        lagl=[]
-        for col in aggcols:
-            lagl.append(col+str(i))
-            rnm[col]=col+str(i)
-        rnm['Game0']='Game'+str(i)
-        tmp=dat.rename(columns=rnm)
-        dat['Game'+str(i)]=dat['Game'+str(i-1)].apply(gamelag)
-        dat=dat.merge(tmp[['Game'+str(i),keys[0]]+lagl], how='left', on=['Game'+str(i),keys[0]])
-    return dat
 
 class nflsr:
 
@@ -38,32 +22,121 @@ class nflsr:
         main['year']=pd.cut(main['game_date'],bins).map(dict(zip(bins,yrs))).astype(int)
         main['ssn_start']=main['year'].map(dict(zip(yrs,strts[:-1])))
         main['week']=((main['game_date']-main['ssn_start']).astype(str).str.split(" ", expand=True)[0].astype(int)//7)+1
-    
+
         self.datmain=main
         self.his=his
+        self.aggkeys={'mean':np.mean,'sum':np.sum}
 
-    def passing(self,incols,aggcols):
+    def ts_agg(self,datmain,his,typid,keys,incols,aggcols,aggtyps):
+        if len(typid)==1:
+            dat=datmain[datmain[typid[0]]==1][incols]
+        if len(typid)==2:
+            dat=datmain[datmain[typid[0]]==typid[1]][incols]
+        aggdct={}
+        for i in range(len(aggcols)):
+            aggdct[aggcols[i]]=[self.aggkeys[key] for key in aggtyps[i]]
+        dat=dat[keys+['week','year']+aggcols].groupby(keys+['week','year']).agg(aggdct).reset_index()
+        dat['Game0']=dat['year'].astype(str)+dat['week'].astype(str)
+        rnm={}
+        for i in range(1,his+1):
+            dat=dat.drop_duplicates()
+            lagl=[]
+            for col in aggcols:
+                lagl.append(col+str(i))
+                rnm[col]=col+str(i)
+            rnm['Game0']='Game'+str(i)
+            tmp=dat.rename(columns=rnm)
+            dat['Game'+str(i)]=dat['Game'+str(i-1)].apply(gamelag)
+            dat=dat.merge(tmp[['Game'+str(i),keys[0]]+lagl], how='left', on=['Game'+str(i),keys[0]])
+        return dat
+
+    def passing(self):
         #dat=ts_agg(self.datmain,self.his,'rush_attempt',['rusher_player_id','rusher_player_name'],['rusher_player_id','rusher_player_name','week','year','yards_gained','rush_attempt','rush_touchdown'],['yards_gained','rush_attempt','rus$
         #self.passer=dat
         pass
 
     def rushing(self):
-        dat=ts_agg(self.datmain,self.his,'rush_attempt',['rusher_player_id','rusher_player_name'],['rusher_player_id','rusher_player_name','week','year','yards_gained','rush_attempt','rush_touchdown'],['yards_gained','rush_attempt','rush_touchdown'])
+        dat=self.ts_agg(self.datmain,self.his,['rush_attempt'],
+            ['rusher_player_id','rusher_player_name'],
+            ['rusher_player_id','rusher_player_name','week','year','yards_gained','rush_attempt','rush_touchdown'],
+            ['yards_gained','rush_attempt','rush_touchdown'],
+            [['sum'],['sum'],['sum']])
         self.rusher=dat
 
     def receiving(self):
-        comp=ts_agg(self.datmain,self.his,'complete_pass',['receiver_player_id','receiver_player_name'],['receiver_player_id','receiver_player_name','week','year','complete_pass','air_yards','yards_after_catch','pass_touchdown'],['complete_pass','air_yards','yards_after_catch','pass_touchdown'])
-        print(len(comp))
-        att=ts_agg(self.datmain,self.his,'pass_attempt',['receiver_player_id','receiver_player_name'],['receiver_player_id','receiver_player_name','week','year','pass_attempt','air_yards'],['pass_attempt','air_yards'])
-        print(len(att))
+        comp=self.ts_agg(self.datmain,self.his,['complete_pass'],
+            ['receiver_player_id','receiver_player_name'],
+            ['receiver_player_id','receiver_player_name','week','year','complete_pass','air_yards','yards_after_catch','pass_touchdown'],
+            ['complete_pass','air_yards','yards_after_catch','pass_touchdown'],
+            [['sum'],['sum'],['sum'],['sum']])
+        att=self.ts_agg(self.datmain,self.his,['pass_attempt'],
+            ['receiver_player_id','receiver_player_name'],
+            ['receiver_player_id','receiver_player_name','week','year','pass_attempt','air_yards'],
+            ['pass_attempt','air_yards'],
+            [['sum'],['sum']])
         main=att.merge(comp, how='left', on=['Game0','receiver_player_id'])
-        self.receiving=main
+        self.receiver=main
 
-    def kicking(self,incols,aggcols):
+    def kicking(self):
         pass
 
-    def defense(self,incols,aggcols):
-        pass
+    def defense(self):
+        self.datmain['fg']=(self.datmain['field_goal_result']=='made').astype(int)
+        passatt=self.ts_agg(self.datmain,self.his,['pass_attempt'],
+            ['defteam'],
+            ['defteam','pass_attempt','week','year'],
+            ['pass_attempt'],
+            [['sum']])
+        passcomp=self.ts_agg(self.datmain,self.his,['complete_pass'],
+            ['defteam'],
+            ['defteam','week','year','complete_pass','air_yards','yards_after_catch','pass_touchdown'],
+            ['complete_pass','air_yards','yards_after_catch','pass_touchdown'],
+            [['sum'],['sum'],['sum'],['sum']])
+        rushing=self.ts_agg(self.datmain,self.his,['rush_attempt'],
+            ['defteam'],
+            ['defteam','week','year','rush_attempt','yards_gained','rush_touchdown'],
+            ['rush_attempt','yards_gained','rush_touchdown'],
+            [['sum'],['sum'],['sum']])
+        spcl=self.ts_agg(self.datmain,self.his,('timeout',0),
+            ['defteam'],
+            ['defteam','week','year','sack','interception','fumble_forced','qb_hit','return_touchdown'],
+            ['sack','interception','fumble_forced','qb_hit','return_touchdown'],
+            [['sum'],['sum'],['sum'],['sum'],['sum']])
+        fg=self.ts_agg(self.datmain,self.his,['field_goal_attempt'],
+            ['defteam'],
+            ['defteam','field_goal_attempt','fg','week','year'],
+            ['field_goal_attempt','fg'],
+            [['sum'],['mean']])
+        maind=passatt.merge(passcomp, how='left', on=['Game0','defteam']).merge(rushing, how='left', on=['Game0','defteam']).merge(spcl, how='left', on=['Game0','defteam']).merge(fg, how='left', on=['Game0','defteam'])
+
+        passatt=self.ts_agg(self.datmain,self.his,['pass_attempt'],
+            ['posteam'],
+            ['posteam','pass_attempt','week','year'],
+            ['pass_attempt'],
+            [['sum']])
+        passcomp=self.ts_agg(self.datmain,self.his,['complete_pass'],
+            ['posteam'],
+            ['posteam','week','year','complete_pass','air_yards','yards_after_catch','pass_touchdown'],
+            ['complete_pass','air_yards','yards_after_catch','pass_touchdown'],
+            [['sum'],['sum'],['sum'],['sum']])
+        rushing=self.ts_agg(self.datmain,self.his,['rush_attempt'],
+            ['posteam'],
+            ['posteam','week','year','rush_attempt','yards_gained','rush_touchdown'],
+            ['rush_attempt','yards_gained','rush_touchdown'],
+            [['sum'],['sum'],['sum']])
+        spcl=self.ts_agg(self.datmain,self.his,('timeout',0),
+            ['posteam'],
+            ['posteam','week','year','sack','interception','fumble_forced','qb_hit','return_touchdown'],
+            ['sack','interception','fumble_forced','qb_hit','return_touchdown'],
+            [['sum'],['sum'],['sum'],['sum'],['sum']])
+        fg=self.ts_agg(self.datmain,self.his,['field_goal_attempt'],
+            ['posteam'],
+            ['posteam','field_goal_attempt','fg','week','year'],
+            ['field_goal_attempt','fg'],
+            [['sum'],['mean']])
+        maino=passatt.merge(passcomp, how='left', on=['Game0','defteam']).merge(rushing, how='left', on=['Game0','defteam']).merge(spcl, how='left', on=['Game0','defteam']).merge(fg, how='left', on=['Game0','defteam'])
+
+        #self.defense=main
 
     def write(self):
         pass
@@ -71,6 +144,6 @@ class nflsr:
 if __name__=="__main__":
     run=nflsr()
     print(run.his)
-    run.receiving()
-    print(run.receiving)
+    run.defense()
+    print('ayy')
 
