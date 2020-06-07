@@ -13,6 +13,17 @@ The goal of this project is to utilize advanced ml/prtfolio diversification meth
 ## Strategy
 * Model each component of fantasy score separately using the catboost regressor model
 * Develop bet diversification optimization system, across teams/players/game type/competition (game types with flexibility on player slotting will require [MIP,](https://github.com/coin-or/python-mip) but otherwise basic continuous optimization methods can be used)
+
+<div align="center">
+  
+![alt text](https://github.com/kark23/agamb/blob/master/figs/fig1.PNG?raw=true)
+Figure 1: Optimization Outline
+
+![alt text](https://github.com/kark23/agamb/blob/master/figs/fig2.PNG?raw=true)
+Figure 2: Simplifying Equation for Bet Covariance Matrix
+
+</div>
+
 ## Backtesting
 * Evaluate historical in-sample/out=of-sample model accuracy v. actual and v. host site predictions
 * Strategy can be backtested/adjusted through scraped competition data
