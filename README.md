@@ -16,10 +16,10 @@ The goal of this project is to utilize advanced ml/prtfolio diversification meth
 
 <div align="center">
   
-![alt text](https://github.com/kark23/agamb/blob/master/figs/fig1.PNG?raw=true)
+![alt text](https://github.com/kark23/agamb/blob/dev/figs/fig1.PNG?raw=true)
 Figure 1: Optimization Outline
 
-![alt text](https://github.com/kark23/agamb/blob/master/figs/fig2.PNG?raw=true)
+![alt text](https://github.com/kark23/agamb/blob/dev/figs/fig2.PNG?raw=true)
 
 Figure 2: Simplifying Equation for Bet Covariance Matrix
 
