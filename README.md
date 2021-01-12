@@ -1,7 +1,7 @@
 # Automated Gambling Strategy Pipeline
 
 ## Overview
-The goal of this project is to utilize advanced ml/prtfolio diversification methods in order to build a stable/profitable gambling strategy. The first iteration of this project is designed for fantasy basketball because there is a wealth of available data and the 82 game season makes betting strategies more stable. However, the framework should be largely reapplicable toward other sports/gambling channels. The general structuring of the project will follow the asset management framework outlined in [Advances in Financial Machine Learning (Lopez de Prado 2018).](https://www.amazon.com/Advances-Financial-Machine-Learning-Marcos/dp/1119482089)
+For competitive purpose certain important components of project are left out to prevent replicability. The goal of this project is to utilize advanced ml/prtfolio diversification methods in order to build a stable/profitable gambling strategy. The first iteration of this project is designed for fantasy basketball because there is a wealth of available data and the 82 game season makes betting strategies more stable. However, the framework should be largely reapplicable toward other sports/gambling channels. The general structuring of the project will follow the asset management framework outlined in [Advances in Financial Machine Learning (Lopez de Prado 2018).](https://www.amazon.com/Advances-Financial-Machine-Learning-Marcos/dp/1119482089)
 
 ## Data Curation
 * Scrape 20 years of historical play-by-play game data for training the base model
